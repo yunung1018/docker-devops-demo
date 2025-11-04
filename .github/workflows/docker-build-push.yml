@@ -58,10 +58,15 @@ deploy:
 
 
           script: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-          docker pull ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
-          docker stop devops-app || true
-          docker rm devops-app || true
-          docker run -d -p 8080:8080 --name devops-app --restart always ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
+            # 1. (在 EC2 上) 登入 GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
+            # 2. (在 EC2 上) 拉取 (Pull) 最新的 Docker 映像
+            docker pull ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
 
+            # 3. (在 EC2 上) 停止並移除舊的容器
+            docker stop devops-app || true
+            docker rm devops-app || true
+
+            # 4. (在 EC2 上) 啟動新容器
+            docker run -d -p 8080:8080 --name devops-app --restart always ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
