@@ -1,0 +1,38 @@
+# 工作流程的名稱
+name: Build and Push Docker Image to GHCR
+
+# 1. 觸發時機 (當推送到 main 分支時)
+on:
+  push:
+    branches:       
+      - main
+
+# 2. 權限設定 (請求寫入 packages 的權限)
+permissions:
+  contents: read      
+  packages: write     
+
+# 3. 工作
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      # 步驟一：下載您的程式碼 (Dockerfile, app.py...)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 步驟二：登入 GitHub 容器倉庫 (GHCR)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 步驟三：建置 Docker 映像並推送
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .         
+          push: true         
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
