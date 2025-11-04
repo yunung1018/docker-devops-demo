@@ -1,6 +1,5 @@
 # 工作流程的名稱
-name: Build and Push Docker Image to GHCR
-
+name: Build, Push, and Deploy Docker Image
 # 1. 觸發時機 (當推送到 main 分支時)
 on:
   push:
@@ -36,3 +35,33 @@ jobs:
           context: .         
           push: true         
           tags: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
+
+deploy:
+    runs-on: ubuntu-latest
+    
+
+    needs: build-and-push
+
+    permissions:
+      packages: read       
+
+    steps:
+      - name: Deploy to EC2 Server
+
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.EC2_HOST }}        # 您的 EC2 IP
+          username: ${{ secrets.EC2_USER }}    # ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}      # 您的 .pem 金鑰內容
+          port: 22                             # SSH 預設 port
+
+
+          script: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+          docker pull ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
+          docker stop devops-app || true
+          docker rm devops-app || true
+          docker run -d -p 8080:8080 --name devops-app --restart always ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:latest
+
+
